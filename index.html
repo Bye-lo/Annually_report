@@ -1,198 +1,23 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>摩天大楼度年度总结</title>
-    <meta charset="utf-8">
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f5f7fa;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .header {
-            width: 100%;
-            background: linear-gradient(135deg, #1e88e5, #1565c0);
-            color: white;
-            text-align: center;
-            padding: 40px 0;
-            margin-bottom: 30px;
-        }
-
-        .header h1 {
-            margin: 0;
-            font-size: 2.5em;
-            font-weight: 300;
-        }
-
-        .header p {
-            margin: 10px 0 0;
-            opacity: 0.9;
-            font-size: 1.1em;
-        }
-
-        .container {
-            max-width: 1200px;
-            width: 90%;
-            margin: 0 auto;
-            padding: 20px;
-        }
-
-        .features {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 25px;
-            margin-top: 20px;
-        }
-
-        .feature-card {
-            background: white;
-            border-radius: 12px;
-            padding: 25px;
-            text-align: center;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            min-height: 220px;
-        }
-
-        .feature-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
-        }
-
-        .feature-card h3 {
-            color: #1e88e5;
-            margin-top: 0;
-            font-size: 1.4em;
-        }
-
-        .feature-card p {
-            color: #666;
-            margin: 15px 0;
-            flex-grow: 1;
-        }
-
-        .search-form {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            margin-top: auto;
-        }
-
-        input[type="text"] {
-            padding: 12px 20px;
-            font-size: 16px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            width: 100%;
-            box-sizing: border-box;
-            transition: border-color 0.3s ease;
-        }
-
-        input[type="text"]:focus {
-            outline: none;
-            border-color: #1e88e5;
-        }
-
-        button, .feature-button {
-            padding: 12px 25px;
-            font-size: 16px;
-            background-color: #1e88e5;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-            text-decoration: none;
-            display: inline-block;
-            width: 100%;
-            box-sizing: border-box;
-        }
-
-        button:hover, .feature-button:hover {
-            background-color: #1565c0;
-        }
-
-        .error-message {
-            color: #d32f2f;
-            background-color: #ffebee;
-            padding: 10px;
-            border-radius: 4px;
-            margin-top: 10px;
-            font-size: 0.9em;
-        }
-
-        @media (max-width: 768px) {
-            .features {
-                grid-template-columns: 1fr;
-            }
-            
-            .feature-card {
-                min-height: auto;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h1>摩天大楼年度总结</h1>
-        <p>截至2024-12-26</p>
-    </div>
-
-    <div class="container">
-        <div class="features">
-            <div class="feature-card">
-                <h3>个人年度总结</h3>
-                <p>生成你的个人年度数据报告</p>
-                <form onsubmit="return checkInput(event)" class="search-form">
-                    <input type="text" name="uid" id="userInput" placeholder="请输入UID..." required>
-                    <button type="submit">生成总结</button>
-                </form>
-            </div>
-
-            <div class="feature-card">
-                <h3>高楼总结</h3>
-                <p>了解整个楼层的年度数据统计</p>
-                <a href="javascript:void(0)" onclick="viewBuildingSummary()" class="feature-button">查看总结</a>
-            </div>
-
-
-        </div>
-    </div>
-
+    <title>欢迎访问摩天高楼年末总结</title>
     <script>
-    function checkInput(event) {
-        event.preventDefault(); // 阻止表单默认提交行为
-        var inputValue = document.getElementById('userInput').value;
-        
-        switch(inputValue) {
-            case '261080295':
-                window.location.href = 'underdog的年度总结.html';
-                break;
-            case '224114431':
-                window.location.href = '司命的年度总结.html';
-                break;
-            case '130294434':
-                window.location.href = '司命☁的年度总结.html';
-                break;
-            default:
-                alert('未找到对应的年度总结！');
-                break;
-        }
-        return false;
-    }
+        function checkPassword() {
+            const password = prompt("请输入密码访问此页面：");
+            const correctPassword = "siming_xjxqgzll_0424";
 
-    function viewBuildingSummary() {
-        window.location.href = '摩天大楼年度总结摩天大楼度年度总结 (截至2024-12-26）.html';
-    }
+            if (password === correctPassword) {
+                window.location.href = "本楼总结.html";
+            } else { 
+                alert("密码错误！再见👋");
+                window.location.href = "https://www.bing.com"; 
+            }
+        }
     </script>
+</head>
+<body onload="checkPassword()">
+    <h1>欢迎访问摩天高楼年末总结</h1>
+    <p>跳转中。。。</p>
 </body>
-</html> 
+</html>
