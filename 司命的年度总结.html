@@ -478,14 +478,14 @@
                     var mapOption = {
                         backgroundColor: '#ffffff',
                         title: {
-                            text: '旅行足迹热力图',
+                            text: '旅行足迹',
                             left: 'center'
                         },
                         tooltip: {
                             trigger: 'item',
                             formatter: function(params) {
                                 if (params.data && params.data.value > 0) {
-                                    return `${params.name}<br/>发帖数：${params.data.value}`;
+                                    return `${params.name}<br/>盖楼数：${params.data.value}`;
                                 }
                                 return params.name;
                             }
