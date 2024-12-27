@@ -149,7 +149,7 @@
 
     <div class="container">
         <div class="features">
-            <div class="feature-card">
+            <div class="feature-card" style="flex: 1;">
                 <h3>个人年度总结</h3>
                 <p>生成你的个人年度数据报告</p>
                 <form onsubmit="return checkInput(event)" class="search-form">
@@ -158,13 +158,17 @@
                 </form>
             </div>
 
-            <div class="feature-card">
+            <div class="feature-card" style="flex: 1;">
                 <h3>高楼总结</h3>
                 <p>了解整个楼层的年度数据统计</p>
                 <a href="javascript:void(0)" onclick="viewBuildingSummary()" class="feature-button">查看总结</a>
             </div>
 
-
+            <div class="feature-card" style="flex: 1;">
+                <h3>活跃度排行榜</h3>
+                <p>查看用户活跃度排名</p>
+                <a href="ranking.html" class="feature-button">查看排行榜</a>
+            </div>
         </div>
     </div>
 
