@@ -167,35 +167,23 @@
             <div class="feature-card" style="flex: 1;">
                 <h3>活跃度排行榜</h3>
                 <p>查看用户活跃度排名</p>
-                <a href="pages/ranking.html" class="feature-button">查看排行榜</a>
+                <a href="ranking.html" class="feature-button">查看排行榜</a>
             </div>
         </div>
     </div>
 
+    <script src="uidMapping.js"></script>
     <script>
     function checkInput(event) {
         event.preventDefault(); // 阻止表单默认提交行为
         var inputValue = document.getElementById('userInput').value;
         
-        switch(inputValue) {
-            case '261080295':
-                window.location.href = 'pages/underdog的年度总结.html';
-                break;
-            case '224114431':
-                window.location.href = 'pages/司命的年度总结.html';
-                break;
-            case '130294434':
-                window.location.href = 'pages/司命☁的年度总结.html';
-                break;
-            case 'pixiaodan':
-                window.location.href = 'pages/六扇门内李银心的年度总结.html';
-                break;
-            case '189480748':
-                window.location.href = 'pages/Nothing的年度总结.html';
-                break;
-            default:
-                alert('未找到对应的年度总结！');
-                break;
+        // 使用映射对象查找对应的页面
+        // uidMap 在 uidMapping.js 中定义
+        if (uidMap[inputValue]) {
+            window.location.href = uidMap[inputValue];
+        } else {
+            alert('未找到对应的年度总结！');
         }
         return false;
     }
