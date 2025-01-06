@@ -3,9 +3,9 @@
 <head>
     <title>盖楼动态进度</title>
     <meta charset="utf-8">
-    <script src="js/chart.umd.min.js"></script>
-    <script src="js/chartjs-plugin-datalabels.min.js"></script>
-    <script src="js/confetti.browser.min.js"></script>
+    <script src="../js/chart.umd.min.js"></script>
+    <script src="../js/chartjs-plugin-datalabels.min.js"></script>
+    <script src="../js/confetti.browser.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -380,7 +380,7 @@
         // 检查头像是否存在
         async function checkImageExists(uid) {
             try {
-                const response = await fetch(`/avatar/${uid}.jpg`);
+                const response = await fetch(`../avatar/${uid}.jpg`);
                 return response.ok;
             } catch (e) {
                 console.log(`Avatar not found for UID: ${uid}`);
@@ -419,7 +419,7 @@
                         
                         if (!chart.avatarCache.has(uid)) {
                             const img = new Image();
-                            img.src = `/avatar/${uid}.jpg`;
+                            img.src = `../avatar/${uid}.jpg`;
                             chart.avatarCache.set(uid, img);
                         }
                         
@@ -805,7 +805,7 @@
                 const name = step.querySelector('.winner-name');
                 const scoreEl = step.querySelector('.winner-score');
                 
-                avatar.src = `/avatar/${uid}.jpg`;
+                avatar.src = `../avatar/${uid}.jpg`;
                 name.textContent = uidToLatestUserId.get(uid);
                 scoreEl.textContent = `盖楼 ${Math.floor(score)} 层`;
             });
