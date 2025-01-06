@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>盖楼动态进度</title>
+    <meta charset="utf-8">
+    <script src="js/chart.umd.min.js"></script>
+    <script src="js/chartjs-plugin-datalabels.min.js"></script>
+    <script src="js/confetti.browser.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 40px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8eb 100%);
+            min-height: 100vh;
+        }
+
+        .header {
+            width: 100%;
+            background: linear-gradient(135deg, #1e88e5, #1565c0);
+            color: white;
+            text-align: center;
+            padding: 40px 0;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 2.5em;
+            font-weight: 300;
+        }
+        
+        .back-button {
+            display: inline-block;
+            padding: 12px 25px;
+            background-color: #1e88e5;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            text-decoration: none;
+            margin-bottom: 30px;
+            transition: all 0.3s ease;
+            font-size: 16px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .back-button:hover {
+            background-color: #1565c0;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .chart-container {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+            margin-bottom: 30px;
+            height: 550px;
+            width: 100%;
+        }
+
+        .controls {
+            margin: 30px 0;
+            text-align: center;
+        }
+
+        .control-button {
+            padding: 15px 30px;
+            margin: 0 10px;
+            background: #1e88e5;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .control-button:hover {
+            background: #1565c0;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .date-label {
+            position: absolute;
+            bottom: 80px;
+            right: 80px;
+            font-size: 86px;
+            color: rgba(0,0,0,0.1);
+            font-weight: bold;
+            font-family: 'Arial', sans-serif;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 600px;
+        }
+
+        @keyframes rankChange {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(10px); }
+            100% { transform: translateY(0); }
+        }
+
+        .podium-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            opacity: 1;
+            transition: opacity 0.5s ease-out;
+        }
+
+        .podium-overlay.fade-out {
+            opacity: 0;
+        }
+
+        .podium-container {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding: 20px;
+            gap: 30px;
+            margin-top: 300px;
+            position: relative;
+            z-index: 3;
+        }
+
+        .podium-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+
+        .podium-base {
+            width: 160px;
+            position: relative;
+            border-radius: 10px 10px 0 0;
+        }
+
+        .podium-step.gold .podium-base { 
+            height: 300px; 
+            background: linear-gradient(135deg, #FFD700, #FFA000);
+        }
+        .podium-step.silver .podium-base { 
+            height: 250px; 
+            background: linear-gradient(135deg, #C0C0C0, #9E9E9E);
+        }
+        .podium-step.bronze .podium-base { 
+            height: 200px; 
+            background: linear-gradient(135deg, #CD7F32, #8D6E63);
+        }
+
+        .podium-block {
+            width: 140px;
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .winner-avatar {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            margin-bottom: 10px;
+            border: 6px solid white;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+        }
+
+        .winner-name {
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+            text-align: center;
+            margin-top: 10px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        }
+
+        .winner-score {
+            color: white;
+            font-size: 16px;
+            margin-top: 5px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        }
+
+        .celebration-item {
+            position: absolute;
+            font-size: 60px;
+            animation: float 3s infinite;
+            z-index: 3;
+        }
+
+        .celebration-group {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            margin-top: 200px;
+        }
+
+        @keyframes float {
+            0%, 100% { 
+                transform: translate(0, 0); 
+                opacity: 0.8;
+            }
+            50% { 
+                transform: translate(var(--x, 20px), var(--y, -20px)); 
+                opacity: 1;
+            }
+        }
+
+        .close-podium {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 10px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.3s ease;
+        }
+
+        .close-podium:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .confetti-container {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .celebration-container {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            z-index: 3;
+            pointer-events: none;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .award-button {
+            display: none;  /* 初始隐藏 */
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(145deg, #FFD700, #FFA500);
+            border: none;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            cursor: pointer;
+            z-index: 999;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .award-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+        }
+        
+        .award-button::before {
+            content: "🏆";
+            font-size: 24px;
+            line-height: 60px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>盖楼动态进度</h1>
+    </div>
+    <button class="award-button" title="查看颁奖台"></button>
+
+    <div class="container">
+        <a href="../index.html" class="back-button">返回首页</a>
+
+        <div class="chart-wrapper">
+            <div class="chart-container">
+                <canvas id="rankingChart"></canvas>
+            </div>
+            <div id="dateLabel" class="date-label"></div>
+        </div>
+        <div class="controls">
+            <button class="control-button" onclick="startAnimation()">播放</button>
+            <button class="control-button" onclick="pauseAnimation()">暂停</button>
+            <button class="control-button" onclick="resetAnimation()">重置</button>
+        </div>
+    </div>
+
+    <div class="podium-overlay">
+        <div class="close-podium">×</div>
+        <div class="confetti-container"></div>
+        <div class="celebration-container">
+            <div class="celebration-group">
+                <div class="celebration-item" style="top: 40%; left: -120px; --x: 30px; --y: -20px;">🎉</div>
+                <div class="celebration-item" style="top: 60%; left: -80px; --x: 20px; --y: -30px;">🏆</div>
+                
+                <div class="celebration-item" style="top: 40%; right: -120px; --x: -30px; --y: -20px;">🎊</div>
+                <div class="celebration-item" style="top: 60%; right: -80px; --x: -20px; --y: -30px;">💥</div>
+                
+            </div>
+        </div>
+        <div class="podium-container">
+            <div class="podium-step silver">
+                <div class="podium-block">
+                    <img class="winner-avatar" src="" alt="2nd Place">
+                    <div class="winner-name"></div>
+                    <div class="winner-score"></div>
+                </div>
+                <div class="podium-base"></div>
+            </div>
+            <div class="podium-step gold">
+                <div class="podium-block">
+                    <div class="crown" style="font-size: 60px;">👑</div>
+                    <img class="winner-avatar" src="" alt="1st Place">
+                    <div class="winner-name"></div>
+                    <div class="winner-score"></div>
+                </div>
+                <div class="podium-base"></div>
+            </div>
+            <div class="podium-step bronze">
+                <div class="podium-block">
+                    <img class="winner-avatar" src="" alt="3rd Place">
+                    <div class="winner-name"></div>
+                    <div class="winner-score"></div>
+                </div>
+                <div class="podium-base"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const rankingsData = [{"date": "2025-01-01 00:00:00", "rankings": [[130294434, 81, "\u53f8\u547d\u2601"], [256060645, 68, "0UXDeNA"], [284179257, 62, "MOMO2.0"], [212945898, 52, "\u70b9\u89e3\u70b9\u89e3DJ"], ["pixiaodan", 49, "\u516d\u6247\u95e8\u5185\u674e\u94f6\u5fc3"], [260295198, 45, "\u5c0f\u624b\u7231\u73a9"], [231193411, 39, "\u5c0f\u5976\u8c46"], [282998964, 38, "\ud80c\udda1\ud80c\udd9d\ud80c\udd9f\ud80c\udd9c\ud80c\udd9e\ud80c\udd9f"], [278142675, 36, "\u864emo"], [243090410, 31, "momo"], [70348459, 28, "\u4f36\u4ec3\u7ed9\u4f60\u8bfa"], [260322814, 26, "FoFo"], [261080295, 23, "underdog"], [143523138, 21, "\u5984\u7559WL"], [275997314, 21, "\u9ea6\u8150\u5224\u5b98"], [284411948, 18, "\u597d\u597d\u597d"], [189480748, 17, "Nothing"], [279804730, 16, "momo"], [237972257, 15, "\u968f\u610f"], [121638847, 15, "\u9ed1\u5e2e\u718a\u732b"], [257781092, 14, "\u5a49\u62d2\u4e86_Chris\u7248"], [282006542, 14, "\u6ca1\u4e8b\u558a\u4e00\u558a"], [218429863, 13, "momo"], [191902505, 13, "\u6697\u591c\u730e\u624b"], [281298772, 13, "\u7cca\u7ccamo"], ["I5W2Y0J1314", 11, "momo"], [282998931, 11, "\u8000\u7956"], [280634032, 11, "\u846b\u82a6"], [282355374, 10, "momo"], [258181027, 10, "momo\uff08\u7231\u7248\uff09"], [240837398, 9, "\u4e00\u5757\u94b1"], [194726484, 8, "IT\u968f\u4fbf"], [198529460, 8, "Junn"], [217927735, 8, "momo"], [172421569, 8, "\u4e94\u5cb3\u638c\u95e8\u83ab\u5c0f\u8d1d"], [266668102, 7, "momo"], [259567645, 7, "\u56f0\u56f0\u56f0"], [278364762, 7, "\u6155a"], [4261388, 7, "\u65f6\u95f4\u6d77"], [138445157, 7, "\u8d77\u540d\u5b57\u9ebb\u70e6"], [198543424, 5, "SNH48-\u88f4\u73e0\u6ceb"], [243467287, 5, "\u4e91\u6df1\u4e0d\u77e5\u5904"], [280038437, 5, "\u9e7f\u70b9\u70b9"], [281031349, 4, "WUSU"], [121509113, 4, "momo"], [281150532, 4, "\u5708\u5708\u5706\u5706\u5708\u5708"], [284936825, 4, "\u7c9f\u7c73\u4e0d\u63b0\u68d2\u5b50"], [175170137, 4, "\u88ab\u5b50\u5916\u9762\u592a\u53ef\u6015"], [76012602, 3, "momo"], [193307523, 3, "momo"], [278578104, 3, "\u6211\u662f\u56db\u5ddd\u52d2momo"], [173896254, 2, "momo"], [171879268, 2, "nenr"], [218554448, 2, "\u4e8e\u662f\u98ce\u6765\u8fc7vcr"], [281836247, 2, "\u545c\u5566\u5566"], [81108758, 2, "\u5495\u5495\u5495\u5495"], [226238496, 2, "\u55ef\u5462"], [246011740, 2, "\u60ef\u6027\u53d1\u75af"], [270800859, 2, "\u6211\u6211\u6211"], [269840559, 2, "\u62b1\u4e00\u4e1d\u4f60\u54ea\u4f4d"], [209728967, 2, "\u9ad8\u5c71\u6211\u68a6"], [216340755, 2, "\ud83c\udf38momo\ud83c\udf38"], [239340447, 2, "\ud83d\udee5\ud83c\udf64WERU"], [221399804, 1, "hdhxhjsjhd"], [188564750, 1, "momo"], [174330697, 1, "momo"], [269337258, 1, "momo"], [278262556, 1, "momo"], [229882492, 1, "momo"], [282039851, 1, "momo"], ["guyeqian", 1, "\u4e0d\u5403\u8471\u7684\u987e"], [280148684, 1, "\u5343\u5e06\u8fc7\u5c3d"], [76359961, 1, "\u53cd\u5f39"], [224114431, 1, "\u53f8\u547d"], [60617082, 1, "\u5403\u74dc\u76fc\u4e2d\u5956mo"], [259634442, 1, "\u5409\u5409\u56fd\u738b"], [284525375, 1, "\u5431\u5431\u5431"], [247224595, 1, "\u5c0f\u53ef\u7231"], [279431384, 1, "\u6751\u91cc\u4eba"], [162403012, 1, "\u70b9\u70b9\u70b9"], ["dwdisgoodgirl", 1, "\u725b\u8089\u5e72or\u725b\u677f\u7b4b"], [218451309, 1, "\u752f\u5be7\u5b81love"], [271284098, 1, "\u83cc\u8349"], [184076333, 1, "\u84dd\u9c7c"], [180005241, 1, "\u84e6\u7136"], [213210751, 1, "\u8d39\u96f7"]]}, {"date": "2025-01-02 00:00:00", "rankings": [[212945898, 204, "\u70b9\u89e3\u70b9\u89e3DJ"], [284179257, 193, "MOMO2.0"], [256060645, 137, "0UXDeNA"], [130294434, 129, "\u53f8\u547d\u2601"], [282998964, 100, "\ud80c\udda1\ud80c\udd9d\ud80c\udd9f\ud80c\udd9c\ud80c\udd9e\ud80c\udd9f"], [70348459, 95, "\u4f36\u4ec3\u7ed9\u4f60\u8bfa"], [260295198, 91, "\u5c0f\u624b\u7231\u73a9"], [217927735, 77, "momo"], [261080295, 76, "underdog"], [143523138, 76, "\u5984\u7559WL"], [231193411, 74, "\u5c0f\u5976\u8c46"], ["pixiaodan", 72, "\u516d\u6247\u95e8\u5185\u674e\u94f6\u5fc3"], [278142675, 69, "\u864emo"], [243090410, 58, "momo"], [282006542, 56, "\u6ca1\u4e8b\u558a\u4e00\u558a"], [260322814, 52, "FoFo"], [121638847, 51, "\u9ed1\u5e2e\u718a\u732b"], [189480748, 46, "Nothing"], [275997314, 44, "\u9ea6\u8150\u5224\u5b98"], [282998931, 43, "\u8000\u7956"], [237972257, 43, "\u968f\u610f"], [284411948, 39, "\u597d\u597d\u597d"], [279804730, 37, "momo"], [243467287, 35, "\u4e91\u6df1\u4e0d\u77e5\u5904"], [281298772, 34, "\u7cca\u7ccamo"], [191902505, 29, "\u6697\u591c\u730e\u624b"], [259567645, 27, "\u56f0\u56f0\u56f0"], [218429863, 22, "momo"], [282355374, 22, "momo"], [258181027, 22, "momo\uff08\u7231\u7248\uff09"], [172421569, 18, "\u4e94\u5cb3\u638c\u95e8\u83ab\u5c0f\u8d1d"], [198529460, 15, "Junn"], [76012602, 15, "momo"], [193307523, 15, "momo"], [257781092, 15, "\u5a49\u62d2\u4e86_Chris\u7248"], [280634032, 15, "\u846b\u82a6"], ["I5W2Y0J1314", 14, "momo"], [55557556, 13, "mxmx"], ["ID678678", 12, "\u6ca1\u4e8b\u5c31\u778e\u901b\u5457"], [175170137, 12, "\u88ab\u5b50\u5916\u9762\u592a\u53ef\u6015"], [194726484, 11, "IT\u968f\u4fbf"], [266668102, 11, "momo"], [247224595, 11, "\u5c0f\u53ef\u7231"], [280038437, 11, "\u9e7f\u70b9\u70b9"], [4261388, 10, "\u65f6\u95f4\u6d77"], [240837398, 9, "\u4e00\u5757\u94b1"], [281836247, 9, "\u545c\u5566\u5566"], [198543424, 8, "SNH48-\u88f4\u73e0\u6ceb"], [173896254, 8, "momo"], [278364762, 7, "\u6155a"], [138445157, 7, "\u8d77\u540d\u5b57\u9ebb\u70e6"], [284525375, 6, "\u5431\u5431\u5431"], [149113870, 5, "Joying"], [121509113, 5, "momo"], [269840559, 5, "\u62b1\u4e00\u4e1d\u4f60\u54ea\u4f4d"], [257503170, 5, "\u62b1\u7d27\u6211\u7684\u5357\u74dc\u732b"], [239340447, 5, "\ud83d\udee5\ud83c\udf64WERU"], [281031349, 4, "WUSU"], [278262556, 4, "momo"], [229882492, 4, "momo"], [281150532, 4, "\u5708\u5708\u5706\u5706\u5708\u5708"], [284936825, 4, "\u7c9f\u7c73\u4e0d\u63b0\u68d2\u5b50"], [270191433, 3, "19"], [221399804, 3, "hdhxhjsjhd"], [76359961, 3, "\u53cd\u5f39"], [81108758, 3, "\u5495\u5495\u5495\u5495"], [226238496, 3, "\u55ef\u5462"], [246011740, 3, "\u60ef\u6027\u53d1\u75af"], [278578104, 3, "\u6211\u662f\u56db\u5ddd\u52d2momo"], [174330697, 2, "momo"], [171879268, 2, "nenr"], ["guyeqian", 2, "\u4e0d\u5403\u8471\u7684\u987e"], [218554448, 2, "\u4e8e\u662f\u98ce\u6765\u8fc7vcr"], [224114431, 2, "\u53f8\u547d"], [259634442, 2, "\u5409\u5409\u56fd\u738b"], [270800859, 2, "\u6211\u6211\u6211"], [180005241, 2, "\u84e6\u7136"], [209728967, 2, "\u9ad8\u5c71\u6211\u68a6"], [216340755, 2, "\ud83c\udf38momo\ud83c\udf38"], [154728935, 1, "chechE"], [141874687, 1, "leehyolee"], [188564750, 1, "momo"], [269337258, 1, "momo"], [282039851, 1, "momo"], ["qlllovesheren", 1, "momo"], [204200609, 1, "momo"], [201381571, 1, "\u5143\u65e5"], [280148684, 1, "\u5343\u5e06\u8fc7\u5c3d"], [60617082, 1, "\u5403\u74dc\u76fc\u4e2d\u5956mo"], [272490269, 1, "\u54af\u5654\u59d0"], [77418139, 1, "\u65f6\u5149\u673a\u4e0d\u4f1a\u8001"], [279431384, 1, "\u6751\u91cc\u4eba"], [176472336, 1, "\u6c5f\u6e56\u504f\u5b50"], [264049302, 1, "\u6ca1\u6709\u88ab\u9080\u8bf7"], [162403012, 1, "\u70b9\u70b9\u70b9"], ["dwdisgoodgirl", 1, "\u725b\u8089\u5e72or\u725b\u677f\u7b4b"], [218451309, 1, "\u752f\u5be7\u5b81love"], [281917391, 1, "\u77ed\u77ed\u51e0\u4e2a\u79cb"], [271284098, 1, "\u83cc\u8349"], [184076333, 1, "\u84dd\u9c7c"], [247351870, 1, "\u8c46\u53cbn5tuEdgBYQ"], [213210751, 1, "\u8d39\u96f7"]]}, {"date": "2025-01-03 00:00:00", "rankings": [[212945898, 334, "\u70b9\u89e3\u70b9\u89e3DJ"], [284179257, 302, "MOMO2.0"], [130294434, 216, "\u53f8\u547d\u2601"], [256060645, 171, "0UXDeNA"], [70348459, 163, "\u4f36\u4ec3\u7ed9\u4f60\u8bfa"], [282998964, 144, "\ud80c\udda1\ud80c\udd9d\ud80c\udd9f\ud80c\udd9c\ud80c\udd9e\ud80c\udd9f"], [143523138, 130, "\u5984\u7559WL"], [260295198, 115, "\u5c0f\u624b\u7231\u73a9"], [278142675, 108, "\u864emo"], [231193411, 107, "\u5c0f\u5976\u8c46"], [217927735, 104, "momo"], ["pixiaodan", 102, "\u516d\u6247\u95e8\u5185\u674e\u94f6\u5fc3"], [261080295, 96, "underdog"], [243090410, 91, "momo"], [121638847, 87, "\u9ed1\u5e2e\u718a\u732b"], [282998931, 86, "\u8000\u7956"], [243467287, 77, "\u4e91\u6df1\u4e0d\u77e5\u5904"], [191902505, 77, "\u6697\u591c\u730e\u624b"], [260322814, 64, "FoFo"], [281298772, 59, "\u7cca\u7ccamo"], [237972257, 58, "\u968f\u610f"], [282006542, 57, "\u6ca1\u4e8b\u558a\u4e00\u558a"], [284411948, 56, "\u597d\u597d\u597d"], [279804730, 52, "momo"], [280038437, 52, "\u9e7f\u70b9\u70b9"], [275997314, 52, "\u9ea6\u8150\u5224\u5b98"], [189480748, 50, "Nothing"], [259567645, 50, "\u56f0\u56f0\u56f0"], [76012602, 44, "momo"], [282355374, 39, "momo"], [218429863, 34, "momo"], [258181027, 30, "momo\uff08\u7231\u7248\uff09"], [198529460, 29, "Junn"], ["I5W2Y0J1314", 28, "momo"], [172421569, 27, "\u4e94\u5cb3\u638c\u95e8\u83ab\u5c0f\u8d1d"], [280634032, 23, "\u846b\u82a6"], [193307523, 22, "momo"], [175170137, 22, "\u88ab\u5b50\u5916\u9762\u592a\u53ef\u6015"], [4261388, 19, "\u65f6\u95f4\u6d77"], [183109359, 19, "\u9ec4"], [257781092, 18, "\u5a49\u62d2\u4e86_Chris\u7248"], [55557556, 16, "mxmx"], [284525375, 16, "\u5431\u5431\u5431"], [266668102, 12, "momo"], [121509113, 12, "momo"], [269840559, 12, "\u62b1\u4e00\u4e1d\u4f60\u54ea\u4f4d"], ["ID678678", 12, "\u6ca1\u4e8b\u5c31\u778e\u901b\u5457"], [138445157, 12, "\u8d77\u540d\u5b57\u9ebb\u70e6"], [194726484, 11, "IT\u968f\u4fbf"], [240837398, 11, "\u4e00\u5757\u94b1"], [281836247, 11, "\u545c\u5566\u5566"], [247224595, 11, "\u5c0f\u53ef\u7231"], [173896254, 10, "momo"], [257503170, 9, "\u62b1\u7d27\u6211\u7684\u5357\u74dc\u732b"], [198543424, 8, "SNH48-\u88f4\u73e0\u6ceb"], [278364762, 8, "\u6155a"], [229882492, 7, "momo"], [81108758, 7, "\u5495\u5495\u5495\u5495"], [264049302, 7, "\u6ca1\u6709\u88ab\u9080\u8bf7"], ["guyeqian", 6, "\u4e0d\u5403\u8471\u7684\u987e"], [239340447, 6, "\ud83d\udee5\ud83c\udf64WERU"], [149113870, 5, "Joying"], [281031349, 5, "WUSU"], [278262556, 5, "momo"], [226238496, 5, "\u55ef\u5462"], [284936825, 5, "\u7c9f\u7c73\u4e0d\u63b0\u68d2\u5b50"], [270191433, 4, "19"], [171879268, 4, "nenr"], [281150532, 4, "\u5708\u5708\u5706\u5706\u5708\u5708"], [221399804, 3, "hdhxhjsjhd"], ["qlllovesheren", 3, "momo"], [76359961, 3, "\u53cd\u5f39"], [246011740, 3, "\u60ef\u6027\u53d1\u75af"], [278578104, 3, "\u6211\u662f\u56db\u5ddd\u52d2momo"], [123055616, 3, "\u6c89\u9ed8\u4e0d\u8bed"], [213210751, 3, "\u8d39\u96f7"], [141874687, 2, "leehyolee"], [174330697, 2, "momo"], [218554448, 2, "\u4e8e\u662f\u98ce\u6765\u8fc7vcr"], [224114431, 2, "\u53f8\u547d"], [60617082, 2, "\u5403\u74dc\u76fc\u4e2d\u5956mo"], [259634442, 2, "\u5409\u5409\u56fd\u738b"], [270800859, 2, "\u6211\u6211\u6211"], [281917391, 2, "\u77ed\u77ed\u51e0\u4e2a\u79cb"], [180005241, 2, "\u84e6\u7136"], [209728967, 2, "\u9ad8\u5c71\u6211\u68a6"], [216340755, 2, "\ud83c\udf38momo\ud83c\udf38"], [183092185, 1, "123456\u4e00\u8d77\u8d70"], [179256802, 1, "AKA\u6b66\u796f"], [154728935, 1, "chechE"], [188564750, 1, "momo"], [269337258, 1, "momo"], [282039851, 1, "momo"], [204200609, 1, "momo"], [44314224, 1, "\u1dc4\u0847\u1dc5"], [126046846, 1, "\u4e07\u91cc\u9ad8"], [201381571, 1, "\u5143\u65e5"], [251900211, 1, "\u521a\u67d4\u5e76\u6d4e"], [280148684, 1, "\u5343\u5e06\u8fc7\u5c3d"], ["saaaa1984", 1, "\u53bb\u53bb\u5c31\u56de1120"], [272490269, 1, "\u54af\u5654\u59d0"], [259654496, 1, "\u60f3\u529e\u6cd5\u517b\u8fea\u5df4"], [77418139, 1, "\u65f6\u5149\u673a\u4e0d\u4f1a\u8001"], [279431384, 1, "\u6751\u91cc\u4eba"], [176472336, 1, "\u6c5f\u6e56\u504f\u5b50"], [162403012, 1, "\u70b9\u70b9\u70b9"], ["dwdisgoodgirl", 1, "\u725b\u8089\u5e72or\u725b\u677f\u7b4b"], [218451309, 1, "\u752f\u5be7\u5b81love"], [278394177, 1, "\u767d\u571f"], [271284098, 1, "\u83cc\u8349"], [184076333, 1, "\u84dd\u9c7c"], [247351870, 1, "\u8c46\u53cbn5tuEdgBYQ"]]}, {"date": "2025-01-04 00:00:00", "rankings": [[212945898, 391, "\u70b9\u89e3\u70b9\u89e3DJ"], [284179257, 350, "MOMO2.0"], [130294434, 259, "\u53f8\u547d\u2601"], [256060645, 190, "0UXDeNA"], [70348459, 183, "\u4f36\u4ec3\u7ed9\u4f60\u8bfa"], [282998964, 163, "\ud80c\udda1\ud80c\udd9d\ud80c\udd9f\ud80c\udd9c\ud80c\udd9e\ud80c\udd9f"], [260295198, 154, "\u5c0f\u624b\u7231\u73a9"], [143523138, 152, "\u5984\u7559WL"], ["pixiaodan", 144, "\u516d\u6247\u95e8\u5185\u674e\u94f6\u5fc3"], [278142675, 134, "\u864emo"], [231193411, 126, "\u5c0f\u5976\u8c46"], [261080295, 125, "underdog"], [282998931, 124, "\u8000\u7956"], [217927735, 114, "momo"], [191902505, 113, "\u6697\u591c\u730e\u624b"], [243090410, 101, "momo"], [121638847, 100, "\u9ed1\u5e2e\u718a\u732b"], [243467287, 94, "\u4e91\u6df1\u4e0d\u77e5\u5904"], [260322814, 86, "FoFo"], [237972257, 78, "\u968f\u610f"], [281298772, 69, "\u7cca\u7ccamo"], [259567645, 66, "\u56f0\u56f0\u56f0"], [284411948, 63, "\u597d\u597d\u597d"], [280038437, 62, "\u9e7f\u70b9\u70b9"], [279804730, 58, "momo"], [189480748, 57, "Nothing"], [282006542, 57, "\u6ca1\u4e8b\u558a\u4e00\u558a"], [275997314, 53, "\u9ea6\u8150\u5224\u5b98"], [76012602, 52, "momo"], [282355374, 51, "momo"], [258181027, 48, "momo\uff08\u7231\u7248\uff09"], [218429863, 42, "momo"], ["I5W2Y0J1314", 37, "momo"], [198529460, 35, "Junn"], [175170137, 34, "\u88ab\u5b50\u5916\u9762\u592a\u53ef\u6015"], [193307523, 29, "momo"], [172421569, 29, "\u4e94\u5cb3\u638c\u95e8\u83ab\u5c0f\u8d1d"], [280634032, 24, "\u846b\u82a6"], [257781092, 23, "\u5a49\u62d2\u4e86_Chris\u7248"], [4261388, 22, "\u65f6\u95f4\u6d77"], [121509113, 21, "momo"], [183109359, 21, "\u9ec4"], [240837398, 20, "\u4e00\u5757\u94b1"], [284525375, 20, "\u5431\u5431\u5431"], [55557556, 17, "mxmx"], [281836247, 16, "\u545c\u5566\u5566"], [257503170, 16, "\u62b1\u7d27\u6211\u7684\u5357\u74dc\u732b"], [266668102, 15, "momo"], [269840559, 13, "\u62b1\u4e00\u4e1d\u4f60\u54ea\u4f4d"], [138445157, 13, "\u8d77\u540d\u5b57\u9ebb\u70e6"], [247224595, 12, "\u5c0f\u53ef\u7231"], ["ID678678", 12, "\u6ca1\u4e8b\u5c31\u778e\u901b\u5457"], [194726484, 11, "IT\u968f\u4fbf"], [198543424, 11, "SNH48-\u88f4\u73e0\u6ceb"], [264049302, 11, "\u6ca1\u6709\u88ab\u9080\u8bf7"], [173896254, 10, "momo"], [81108758, 10, "\u5495\u5495\u5495\u5495"], [284936825, 10, "\u7c9f\u7c73\u4e0d\u63b0\u68d2\u5b50"], [278364762, 9, "\u6155a"], [239340447, 8, "\ud83d\udee5\ud83c\udf64WERU"], [174947734, 7, "30\u5929\u4fee\u6539\u4e00\u6b21"], [281031349, 7, "WUSU"], [278262556, 7, "momo"], [229882492, 7, "momo"], ["guyeqian", 7, "\u4e0d\u5403\u8471\u7684\u987e"], [226238496, 6, "\u55ef\u5462"], [123055616, 6, "\u6c89\u9ed8\u4e0d\u8bed"], [149113870, 5, "Joying"], [281150532, 5, "\u5708\u5708\u5706\u5706\u5708\u5708"], [246011740, 5, "\u60ef\u6027\u53d1\u75af"], [270191433, 4, "19"], [282039851, 4, "momo"], ["qlllovesheren", 4, "momo"], [171879268, 4, "nenr"], [76359961, 4, "\u53cd\u5f39"], [218451309, 4, "\u752f\u5be7\u5b81love"], [221399804, 3, "hdhxhjsjhd"], [141874687, 3, "leehyolee"], [126046846, 3, "\u4e07\u91cc\u9ad8"], [270800859, 3, "\u6211\u6211\u6211"], [278578104, 3, "\u6211\u662f\u56db\u5ddd\u52d2momo"], [273313494, 3, "\u7075\u987a\u5bfa\u5929\u9009\u7c89\u4e1d"], [278394177, 3, "\u767d\u571f"], [281917391, 3, "\u77ed\u77ed\u51e0\u4e2a\u79cb"], [213210751, 3, "\u8d39\u96f7"], [154728935, 2, "chechE"], [174330697, 2, "momo"], [204200609, 2, "momo"], [192885631, 2, "momo"], [44314224, 2, "\u1dc4\u0847\u1dc5"], [218554448, 2, "\u4e8e\u662f\u98ce\u6765\u8fc7vcr"], [251900211, 2, "\u521a\u67d4\u5e76\u6d4e"], [224114431, 2, "\u53f8\u547d"], [60617082, 2, "\u5403\u74dc\u76fc\u4e2d\u5956mo"], [259634442, 2, "\u5409\u5409\u56fd\u738b"], [180005241, 2, "\u84e6\u7136"], [247351870, 2, "\u8c46\u53cbn5tuEdgBYQ"], [209728967, 2, "\u9ad8\u5c71\u6211\u68a6"], [216340755, 2, "\ud83c\udf38momo\ud83c\udf38"], [183092185, 1, "123456\u4e00\u8d77\u8d70"], [179256802, 1, "AKA\u6b66\u796f"], [188564750, 1, "momo"], [269337258, 1, "momo"], [259311437, 1, "momo"], [280290768, 1, "omo"], [174819858, 1, "\u4e0d\u563b\u563b"], [201381571, 1, "\u5143\u65e5"], [280148684, 1, "\u5343\u5e06\u8fc7\u5c3d"], ["saaaa1984", 1, "\u53bb\u53bb\u5c31\u56de1120"], [272490269, 1, "\u54af\u5654\u59d0"], [282944843, 1, "\u592a\u4e0a\u8001\u6343"], [259654496, 1, "\u60f3\u529e\u6cd5\u517b\u8fea\u5df4"], [77418139, 1, "\u65f6\u5149\u673a\u4e0d\u4f1a\u8001"], [279431384, 1, "\u6751\u91cc\u4eba"], [176472336, 1, "\u6c5f\u6e56\u504f\u5b50"], [162403012, 1, "\u70b9\u70b9\u70b9"], ["dwdisgoodgirl", 1, "\u725b\u8089\u5e72or\u725b\u677f\u7b4b"], [279968995, 1, "\u8036\u563f\u8036\u563f\u54e6\u56af\u5566"], [271284098, 1, "\u83cc\u8349"], [184076333, 1, "\u84dd\u9c7c"]]}, {"date": "2025-01-05 00:00:00", "rankings": [[212945898, 454, "\u70b9\u89e3\u70b9\u89e3DJ"], [284179257, 387, "MOMO2.0"], [130294434, 340, "\u53f8\u547d\u2601"], [70348459, 210, "\u4f36\u4ec3\u7ed9\u4f60\u8bfa"], [256060645, 198, "0UXDeNA"], [282998964, 197, "\ud80c\udda1\ud80c\udd9d\ud80c\udd9f\ud80c\udd9c\ud80c\udd9e\ud80c\udd9f"], [260295198, 179, "\u5c0f\u624b\u7231\u73a9"], [278142675, 175, "\u864emo"], ["pixiaodan", 173, "\u516d\u6247\u95e8\u5185\u674e\u94f6\u5fc3"], [143523138, 163, "\u5984\u7559WL"], [191902505, 148, "\u6697\u591c\u730e\u624b"], [261080295, 131, "underdog"], [231193411, 130, "\u5c0f\u5976\u8c46"], [282998931, 127, "\u8000\u7956"], [121638847, 118, "\u9ed1\u5e2e\u718a\u732b"], [217927735, 117, "momo"], [243090410, 107, "momo"], [243467287, 104, "\u4e91\u6df1\u4e0d\u77e5\u5904"], [260322814, 95, "FoFo"], [259567645, 90, "\u56f0\u56f0\u56f0"], [237972257, 83, "\u968f\u610f"], [281298772, 77, "\u7cca\u7ccamo"], [189480748, 69, "Nothing"], [280038437, 68, "\u9e7f\u70b9\u70b9"], [279804730, 66, "momo"], [284411948, 63, "\u597d\u597d\u597d"], [76012602, 62, "momo"], [258181027, 60, "momo\uff08\u7231\u7248\uff09"], [282355374, 57, "momo"], [282006542, 57, "\u6ca1\u4e8b\u558a\u4e00\u558a"], [275997314, 57, "\u9ea6\u8150\u5224\u5b98"], ["I5W2Y0J1314", 51, "momo"], [218429863, 47, "momo"], [175170137, 42, "\u88ab\u5b50\u5916\u9762\u592a\u53ef\u6015"], [257781092, 39, "\u5a49\u62d2\u4e86_Chris\u7248"], [198529460, 35, "Junn"], [193307523, 31, "momo"], [172421569, 29, "\u4e94\u5cb3\u638c\u95e8\u83ab\u5c0f\u8d1d"], [4261388, 24, "\u65f6\u95f4\u6d77"], [280634032, 24, "\u846b\u82a6"], [284525375, 23, "\u5431\u5431\u5431"], [121509113, 21, "momo"], [183109359, 21, "\u9ec4"], [240837398, 20, "\u4e00\u5757\u94b1"], [257503170, 18, "\u62b1\u7d27\u6211\u7684\u5357\u74dc\u732b"], [55557556, 17, "mxmx"], [281836247, 16, "\u545c\u5566\u5566"], [266668102, 15, "momo"], [269840559, 14, "\u62b1\u4e00\u4e1d\u4f60\u54ea\u4f4d"], ["ID678678", 14, "\u6ca1\u4e8b\u5c31\u778e\u901b\u5457"], [138445157, 13, "\u8d77\u540d\u5b57\u9ebb\u70e6"], [239340447, 13, "\ud83d\udee5\ud83c\udf64WERU"], [198543424, 12, "SNH48-\u88f4\u73e0\u6ceb"], [81108758, 12, "\u5495\u5495\u5495\u5495"], [247224595, 12, "\u5c0f\u53ef\u7231"], [264049302, 12, "\u6ca1\u6709\u88ab\u9080\u8bf7"], [194726484, 11, "IT\u968f\u4fbf"], [226238496, 11, "\u55ef\u5462"], [281031349, 10, "WUSU"], [173896254, 10, "momo"], [278364762, 10, "\u6155a"], [273313494, 10, "\u7075\u987a\u5bfa\u5929\u9009\u7c89\u4e1d"], [284936825, 10, "\u7c9f\u7c73\u4e0d\u63b0\u68d2\u5b50"], [278262556, 9, "momo"], [229882492, 9, "momo"], [174947734, 7, "30\u5929\u4fee\u6539\u4e00\u6b21"], ["guyeqian", 7, "\u4e0d\u5403\u8471\u7684\u987e"], [281150532, 7, "\u5708\u5708\u5706\u5706\u5708\u5708"], [270800859, 7, "\u6211\u6211\u6211"], [123055616, 6, "\u6c89\u9ed8\u4e0d\u8bed"], [149113870, 5, "Joying"], ["qlllovesheren", 5, "momo"], [76359961, 5, "\u53cd\u5f39"], [246011740, 5, "\u60ef\u6027\u53d1\u75af"], [270191433, 4, "19"], [282039851, 4, "momo"], [171879268, 4, "nenr"], [280290768, 4, "omo"], [218451309, 4, "\u752f\u5be7\u5b81love"], [281917391, 4, "\u77ed\u77ed\u51e0\u4e2a\u79cb"], [213210751, 4, "\u8d39\u96f7"], [221399804, 3, "hdhxhjsjhd"], [141874687, 3, "leehyolee"], [232630946, 3, "mo"], [126046846, 3, "\u4e07\u91cc\u9ad8"], [278578104, 3, "\u6211\u662f\u56db\u5ddd\u52d2momo"], [278394177, 3, "\u767d\u571f"], [209728967, 3, "\u9ad8\u5c71\u6211\u68a6"], [154728935, 2, "chechE"], [174330697, 2, "momo"], [204200609, 2, "momo"], [192885631, 2, "momo"], [44314224, 2, "\u1dc4\u0847\u1dc5"], [174819858, 2, "\u4e0d\u563b\u563b"], [218554448, 2, "\u4e8e\u662f\u98ce\u6765\u8fc7vcr"], [251900211, 2, "\u521a\u67d4\u5e76\u6d4e"], [224114431, 2, "\u53f8\u547d"], [60617082, 2, "\u5403\u74dc\u76fc\u4e2d\u5956mo"], [259634442, 2, "\u5409\u5409\u56fd\u738b"], [271284098, 2, "\u83cc\u8349"], [180005241, 2, "\u84e6\u7136"], [247351870, 2, "\u8c46\u53cbn5tuEdgBYQ"], [216340755, 2, "\ud83c\udf38momo\ud83c\udf38"], [183092185, 1, "123456\u4e00\u8d77\u8d70"], [179256802, 1, "AKA\u6b66\u796f"], [188564750, 1, "momo"], [269337258, 1, "momo"], [259311437, 1, "momo"], [201381571, 1, "\u5143\u65e5"], [280148684, 1, "\u5343\u5e06\u8fc7\u5c3d"], ["saaaa1984", 1, "\u53bb\u53bb\u5c31\u56de1120"], [272490269, 1, "\u54af\u5654\u59d0"], [282944843, 1, "\u592a\u4e0a\u8001\u6343"], [259654496, 1, "\u60f3\u529e\u6cd5\u517b\u8fea\u5df4"], [77418139, 1, "\u65f6\u5149\u673a\u4e0d\u4f1a\u8001"], [279431384, 1, "\u6751\u91cc\u4eba"], [176472336, 1, "\u6c5f\u6e56\u504f\u5b50"], [162403012, 1, "\u70b9\u70b9\u70b9"], ["dwdisgoodgirl", 1, "\u725b\u8089\u5e72or\u725b\u677f\u7b4b"], [279968995, 1, "\u8036\u563f\u8036\u563f\u54e6\u56af\u5566"], [184076333, 1, "\u84dd\u9c7c"]]}, {"date": "2025-01-06 00:00:00", "rankings": [[212945898, 492, "\u70b9\u89e3\u70b9\u89e3DJ"], [284179257, 416, "MOMO2.0"], [130294434, 379, "\u53f8\u547d\u2601"], [70348459, 223, "\u4f36\u4ec3\u7ed9\u4f60\u8bfa"], [282998964, 221, "\ud80c\udda1\ud80c\udd9d\ud80c\udd9f\ud80c\udd9c\ud80c\udd9e\ud80c\udd9f"], [256060645, 217, "0UXDeNA"], [278142675, 206, "\u864emo"], [260295198, 198, "\u5c0f\u624b\u7231\u73a9"], ["pixiaodan", 192, "\u516d\u6247\u95e8\u5185\u674e\u94f6\u5fc3"], [143523138, 187, "\u5984\u7559WL"], [261080295, 169, "underdog"], [191902505, 161, "\u6697\u591c\u730e\u624b"], [231193411, 147, "\u5c0f\u5976\u8c46"], [282998931, 142, "\u8000\u7956"], [121638847, 141, "\u9ed1\u5e2e\u718a\u732b"], [243090410, 132, "momo"], [217927735, 126, "momo"], [243467287, 121, "\u4e91\u6df1\u4e0d\u77e5\u5904"], [260322814, 95, "FoFo"], [259567645, 95, "\u56f0\u56f0\u56f0"], [281298772, 86, "\u7cca\u7ccamo"], [237972257, 85, "\u968f\u610f"], [189480748, 75, "Nothing"], [279804730, 73, "momo"], [76012602, 70, "momo"], [258181027, 70, "momo\uff08\u7231\u7248\uff09"], [280038437, 68, "\u9e7f\u70b9\u70b9"], [284411948, 64, "\u597d\u597d\u597d"], [282355374, 60, "momo"], [282006542, 58, "\u6ca1\u4e8b\u558a\u4e00\u558a"], [275997314, 57, "\u9ea6\u8150\u5224\u5b98"], [257781092, 52, "\u5a49\u62d2\u4e86_Chris\u7248"], [218429863, 51, "momo"], ["I5W2Y0J1314", 51, "momo"], [175170137, 42, "\u88ab\u5b50\u5916\u9762\u592a\u53ef\u6015"], [198529460, 37, "Junn"], [284525375, 34, "\u5431\u5431\u5431"], [193307523, 31, "momo"], [172421569, 31, "\u4e94\u5cb3\u638c\u95e8\u83ab\u5c0f\u8d1d"], [240837398, 29, "\u4e00\u5757\u94b1"], [4261388, 24, "\u65f6\u95f4\u6d77"], [280634032, 24, "\u846b\u82a6"], [121509113, 22, "momo"], [183109359, 21, "\u9ec4"], [281836247, 20, "\u545c\u5566\u5566"], [257503170, 20, "\u62b1\u7d27\u6211\u7684\u5357\u74dc\u732b"], [284936825, 18, "\u7c9f\u7c73\u4e0d\u63b0\u68d2\u5b50"], [55557556, 17, "mxmx"], [239340447, 17, "\ud83d\udee5\ud83c\udf64WERU"], [266668102, 15, "momo"], [281150532, 15, "\u5708\u5708\u5706\u5706\u5708\u5708"], [269840559, 14, "\u62b1\u4e00\u4e1d\u4f60\u54ea\u4f4d"], ["ID678678", 14, "\u6ca1\u4e8b\u5c31\u778e\u901b\u5457"], [264049302, 14, "\u6ca1\u6709\u88ab\u9080\u8bf7"], [138445157, 14, "\u8d77\u540d\u5b57\u9ebb\u70e6"], [81108758, 13, "\u5495\u5495\u5495\u5495"], [198543424, 12, "SNH48-\u88f4\u73e0\u6ceb"], [226238496, 12, "\u55ef\u5462"], [247224595, 12, "\u5c0f\u53ef\u7231"], [194726484, 11, "IT\u968f\u4fbf"], [278364762, 11, "\u6155a"], [273313494, 11, "\u7075\u987a\u5bfa\u5929\u9009\u7c89\u4e1d"], [281031349, 10, "WUSU"], [229882492, 10, "momo"], [173896254, 10, "momo"], [278262556, 9, "momo"], [123055616, 8, "\u6c89\u9ed8\u4e0d\u8bed"], [174947734, 7, "30\u5929\u4fee\u6539\u4e00\u6b21"], [232630946, 7, "mo"], ["qlllovesheren", 7, "momo"], ["guyeqian", 7, "\u4e0d\u5403\u8471\u7684\u987e"], [270800859, 7, "\u6211\u6211\u6211"], [76359961, 6, "\u53cd\u5f39"], [279062708, 6, "\u9000\u4f11\u4e86\u5417"], [209728967, 6, "\u9ad8\u5c71\u6211\u68a6"], ["ansonaj", 5, "ANSON"], [149113870, 5, "Joying"], [246011740, 5, "\u60ef\u6027\u53d1\u75af"], [270191433, 4, "19"], [282039851, 4, "momo"], [204200609, 4, "momo"], [171879268, 4, "nenr"], [280290768, 4, "omo"], [126046846, 4, "\u4e07\u91cc\u9ad8"], [174819858, 4, "\u4e0d\u563b\u563b"], [218451309, 4, "\u752f\u5be7\u5b81love"], [278394177, 4, "\u767d\u571f"], [281917391, 4, "\u77ed\u77ed\u51e0\u4e2a\u79cb"], [213210751, 4, "\u8d39\u96f7"], [221399804, 3, "hdhxhjsjhd"], [141874687, 3, "leehyolee"], [278578104, 3, "\u6211\u662f\u56db\u5ddd\u52d2momo"], [154728935, 2, "chechE"], [174330697, 2, "momo"], [259311437, 2, "momo"], [192885631, 2, "momo"], [44314224, 2, "\u1dc4\u0847\u1dc5"], [218554448, 2, "\u4e8e\u662f\u98ce\u6765\u8fc7vcr"], [251900211, 2, "\u521a\u67d4\u5e76\u6d4e"], [224114431, 2, "\u53f8\u547d"], [60617082, 2, "\u5403\u74dc\u76fc\u4e2d\u5956mo"], [259634442, 2, "\u5409\u5409\u56fd\u738b"], [271284098, 2, "\u83cc\u8349"], [180005241, 2, "\u84e6\u7136"], [247351870, 2, "\u8c46\u53cbn5tuEdgBYQ"], [216340755, 2, "\ud83c\udf38momo\ud83c\udf38"], [183092185, 1, "123456\u4e00\u8d77\u8d70"], [179256802, 1, "AKA\u6b66\u796f"], [188564750, 1, "momo"], [269337258, 1, "momo"], [201381571, 1, "\u5143\u65e5"], [280148684, 1, "\u5343\u5e06\u8fc7\u5c3d"], [213274996, 1, "\u539f\u5473\u9ebb\u8fa3\u62cc\u52a0\u918b"], ["saaaa1984", 1, "\u53bb\u53bb\u5c31\u56de1120"], [189111423, 1, "\u53c8\u53c8"], [272490269, 1, "\u54af\u5654\u59d0"], [282944843, 1, "\u592a\u4e0a\u8001\u6343"], [259654496, 1, "\u60f3\u529e\u6cd5\u517b\u8fea\u5df4"], [77418139, 1, "\u65f6\u5149\u673a\u4e0d\u4f1a\u8001"], [279431384, 1, "\u6751\u91cc\u4eba"], [176472336, 1, "\u6c5f\u6e56\u504f\u5b50"], [162403012, 1, "\u70b9\u70b9\u70b9"], ["dwdisgoodgirl", 1, "\u725b\u8089\u5e72or\u725b\u677f\u7b4b"], [279968995, 1, "\u8036\u563f\u8036\u563f\u54e6\u56af\u5566"], [175254817, 1, "\u83f2\u6797"], [184076333, 1, "\u84dd\u9c7c"], [153822591, 1, "\u963f\u6bdb\uff5e"]]}];
+        let currentIndex = 0;
+        let animationInterval;
+        let chart;
+        let previousRankings = new Map();
+        let currentCounts = new Map();
+        let targetIndex = 0;
+        let animationSpeed = 2; // 每次增加1条
+        let totalCounts = new Map(); // 存储每个日期的目标发言总数
+        let uidToLatestUserId = new Map(); // 存储UID到最新User ID的映射
+        let animate; // 声明在全局作用域
+        let podiumClosed = false;  // 添加标志来追踪颁奖台状态
+        let autoCloseTimer = null;  // 用于存储自动关闭的定时器
+        
+        // 检查头像是否存在
+        async function checkImageExists(uid) {
+            try {
+                const response = await fetch(`/avatar/${uid}.jpg`);
+                return response.ok;
+            } catch (e) {
+                console.log(`Avatar not found for UID: ${uid}`);
+                return false;
+            }
+        }
+
+        // 初始化每个日期的目标发言总数
+        function initTotalCounts() {
+            rankingsData.forEach(dayData => {
+                const date = dayData.date.split(' ')[0];
+                const totals = new Map();
+                dayData.rankings.forEach(([uid, count, user_id]) => {
+                    totals.set(uid, count);
+                    // 更新用户ID映射
+                    uidToLatestUserId.set(uid, user_id);
+                });
+                totalCounts.set(date, totals);
+            });
+        }
+
+        async function initChart() {
+            const ctx = document.getElementById('rankingChart').getContext('2d');
+            
+            // 创建自定义插件来绘制头像
+            const avatarPlugin = {
+                id: 'avatarPlugin',
+                afterDatasetsDraw: (chart) => {
+                    const {ctx, scales: {x, y}} = chart;
+                    
+                    for (let index = 0; index < chart.data.labels.length; index++) {
+                        const uid = chart.data.uids[index];
+                        if (!chart.avatarCache) {
+                            chart.avatarCache = new Map();
+                        }
+                        
+                        if (!chart.avatarCache.has(uid)) {
+                            const img = new Image();
+                            img.src = `/avatar/${uid}.jpg`;
+                            chart.avatarCache.set(uid, img);
+                        }
+                        
+                        const img = chart.avatarCache.get(uid);
+                        if (img.complete && img.naturalHeight !== 0) {
+                            const xPos = x.getPixelForValue(chart.data.datasets[0].data[index]);
+                            const yPos = y.getPixelForValue(index);
+                            
+                            const avatarSize = 30;     // 头像大小
+                            const xOffset = -25;       // 负偏移量
+                            
+                            // 在绘制头像之前保存当前绘图上下文状态
+                            ctx.save();
+                            
+                            // 设置全局合成操作，确保头像在柱状图上方
+                            ctx.globalCompositeOperation = 'source-over';
+                            
+                            // 创建圆形裁剪路径
+                            ctx.beginPath();
+                            ctx.arc(
+                                xPos + xOffset,        // X 位置
+                                yPos,                  // Y 位置
+                                avatarSize/2, 
+                                0, 
+                                Math.PI * 2
+                            );
+                            ctx.closePath();
+                            ctx.clip();
+                            
+                            // 绘制头像
+                            ctx.drawImage(
+                                img, 
+                                xPos + xOffset - avatarSize/2,  // X 位置
+                                yPos - avatarSize/2,            // Y 位置
+                                avatarSize,                     // 宽度
+                                avatarSize                      // 高度
+                            );
+                            
+                            // 恢复绘图上下文状态
+                            ctx.restore();
+                            
+                            // 可选：添加头像边框
+                            ctx.beginPath();
+                            ctx.arc(
+                                xPos + xOffset,
+                                yPos,
+                                avatarSize/2,
+                                0,
+                                Math.PI * 2
+                            );
+                            ctx.strokeStyle = 'white';  // 边框颜色
+                            ctx.lineWidth = 2;          // 边框宽度
+                            ctx.stroke();
+                        }
+                    }
+                }
+            };
+
+            chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    uids: [],
+                    datasets: [{
+                        label: '累计盖楼数',
+                        data: [],
+                        backgroundColor: function(context) {
+                            const index = context.dataIndex;
+                            switch(index) {
+                                case 0: return 'rgba(255, 215, 0, 0.8)';
+                                case 1: return 'rgba(192, 192, 192, 0.8)';
+                                case 2: return 'rgba(205, 127, 50, 0.8)';
+                                default: return 'rgba(30, 136, 229, 0.8)';
+                            }
+                        },
+                        borderColor: function(context) {
+                            const index = context.dataIndex;
+                            switch(index) {
+                                case 0: return 'rgba(255, 215, 0, 1)';
+                                case 1: return 'rgba(192, 192, 192, 1)';
+                                case 2: return 'rgba(205, 127, 50, 1)';
+                                default: return 'rgba(30, 136, 229, 1)';
+                            }
+                        },
+                        borderWidth: 1,
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    animation: {
+                        duration: 1000,
+                        easing: 'easeInOutQuart'
+                    },
+                    layout: {
+                        padding: {
+                            right: 100 // 为头像留出空间
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            max:500,//横向最大值，以此相对缩短柱状长度
+                            grid: {
+                                display: false
+                            }
+                        },
+                        y: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                font: function(context) {
+                                    const index = context.index;
+                                    switch(index) {
+                                        case 0: 
+                                            return {
+                                                size: 22,
+                                                weight: 'bold',
+                                                family: 'Arial'
+                                            };
+                                        case 1:
+                                            return {
+                                                size: 20,
+                                                weight: 'bold',
+                                                family: 'Arial'
+                                            };
+                                        case 2:
+                                            return {
+                                                size: 18,
+                                                weight: 'bold',
+                                                family: 'Arial'
+                                            };
+                                        default:
+                                            return {
+                                                size: 16,
+                                                weight: 'normal',
+                                                family: 'Arial'
+                                            };
+                                    }
+                                },
+                                color: function(context) {
+                                    const index = context.index;
+                                    switch(index) {
+                                        case 0: return '#FFD700';
+                                        case 1: return '#C0C0C0';
+                                        case 2: return '#CD7F32';
+                                        default: return '#444';
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        datalabels: {
+                            anchor: 'end',
+                            align: 'right',
+                            offset: 15,
+                            color: function(context) {
+                                const index = context.dataIndex;
+                                // 为前三名设置特殊颜色
+                                switch(index) {
+                                    case 0: return '#FFD700'; // 金色
+                                    case 1: return '#C0C0C0'; // 银色
+                                    case 2: return '#CD7F32'; // 铜色
+                                    default: return '#444';
+                                }
+                            },
+                            font: {
+                                size: 16,
+                                weight: 'bold'
+                            },
+                            formatter: (value) => Math.floor(value)
+                        }
+                    },
+                    maintainAspectRatio: false,
+                    transitions: {
+                        active: {
+                            animation: {
+                                duration: 1000
+                            }
+                        }
+                    }
+                },
+                plugins: [ChartDataLabels, avatarPlugin]
+            });
+            return chart;
+        }
+
+        function updateChart() {
+            const currentDate = rankingsData[targetIndex].date.split(' ')[0];
+            const targetTotals = totalCounts.get(currentDate);
+            let allReached = true;
+            let dataChanged = false;
+
+            // 持续增加每个用户的计数
+            for (const [uid, targetCount] of targetTotals) {
+                if (!currentCounts.has(uid)) {
+                    currentCounts.set(uid, 0);
+                    dataChanged = true;
+                }
+                
+                const current = currentCounts.get(uid);
+                if (current < targetCount) {
+                    currentCounts.set(uid, Math.min(current + 1, targetCount));
+                    dataChanged = true;
+                    allReached = false;
+                }
+            }
+
+            // 只在数据发生变化时更新图表
+            if (dataChanged) {
+                const sortedUsers = Array.from(currentCounts.entries())
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 10);
+
+                const labels = sortedUsers.map(([uid]) => uidToLatestUserId.get(uid) || uid);
+                const uids = sortedUsers.map(([uid]) => uid);
+                const data = sortedUsers.map(([, count]) => Math.floor(count));
+
+                // 更新图表数据
+                chart.data.labels = labels;
+                chart.data.uids = uids;
+                chart.data.datasets[0].data = data;
+
+                document.getElementById('dateLabel').textContent = currentDate;
+                chart.update('none');
+                previousRankings = new Map(uids.map((uid, i) => [uid, i]));
+            }
+
+            // 检查是否是最后一天且所有数据都达到目标
+            const isLastDay = targetIndex === rankingsData.length - 1;
+            if (isLastDay && allReached && !podiumClosed) {
+                setTimeout(showPodium, 300);
+            }
+
+            // 如果所有用户都达到当日目标，进入下一天
+            if (allReached && targetIndex < rankingsData.length - 1) {
+                targetIndex++;
+            }
+
+            // 控制动画速度
+            setTimeout(() => {
+                if (animationInterval) {
+                    requestAnimationFrame(animate);
+                }
+            }, 20);
+        }
+
+        function startAnimation() {
+            if (!animationInterval) {
+                animate = () => {
+                    updateChart();
+                };
+                
+                animationInterval = true;
+                requestAnimationFrame(animate);
+            }
+        }
+
+        function pauseAnimation() {
+            animationInterval = false;
+        }
+
+        function resetAnimation() {
+            currentIndex = 0;
+            targetIndex = 0;
+            currentCounts = new Map();
+            previousRankings = new Map();
+            podiumClosed = false;  // 重置关闭标志
+            // 确保颁奖台被隐藏
+            document.querySelector('.podium-overlay').style.display = 'none';
+            if (animationInterval) {
+                pauseAnimation();
+            }
+            updateChart();
+        }
+
+        // 正确的初始化顺序
+        async function initialize() {
+            initTotalCounts();
+            await initChart();
+            updateChart();
+            // 初始化时显示初始数据
+            chart.update();
+        }
+        
+        initialize();
+
+        function shootConfetti() {
+            return confetti({
+                particleCount: 20,  // 增加粒子数量
+                origin: {
+                    x: 0.5,
+                    y: 0.5
+                },
+                colors: [
+                    '#FFD700',  // 金色
+                    '#FF69B4',  // 粉红色
+                    '#FFE4B5',  // 淡金色
+                    '#FFFFFF',  // 白色
+                    '#87CEEB',  // 天蓝色
+                    '#98FB98',  // 浅绿色
+                    '#E6E6FA',  // 淡紫色
+                ],
+                gravity: 0.7,
+                scalar: 1.5,
+                shapes: ["circle", "square", "star"],
+                disableForReducedMotion: true,
+                angle: 90,
+                startVelocity: 45,  // 增加初始速度
+                decay: 0.9,
+                spread: 150  // 增加扩散范围
+            });
+        }
+
+        function startConfettiShow() {
+            // 发射一次礼花，并在完成后清理
+            const promise = shootConfetti();
+            
+            // 等待礼花动画完成
+            promise.then(() => {
+                // 清理所有礼花相关的 canvas
+                const canvases = document.querySelectorAll('canvas[style*="pointer-events: none"]');
+                canvases.forEach(canvas => canvas.remove());
+            });
+        }
+
+        function closePodium() {
+            // 如果已经关闭，不重复执行
+            if (podiumClosed) return;
+            
+            const overlay = document.querySelector('.podium-overlay');
+            overlay.classList.add('fade-out');
+            
+            setTimeout(() => {
+                overlay.style.display = 'none';
+                overlay.classList.remove('fade-out');
+                
+                // 显示奖杯按钮
+                const awardButton = document.querySelector('.award-button');
+                awardButton.style.display = 'block';
+            }, 500);
+            
+            podiumClosed = true;
+            
+            // 清除自动关闭定时器
+            if (autoCloseTimer) {
+                clearTimeout(autoCloseTimer);
+                autoCloseTimer = null;
+            }
+        }
+
+        function showPodium(fromTrophy = false) {
+            // 如果是首次显示且颁奖台已关闭，则返回
+            if (!fromTrophy && podiumClosed) {
+                return;
+            }
+            
+            console.log("Showing podium...");
+            
+            // 清除任何现有的自动关闭定时器
+            if (autoCloseTimer) {
+                clearTimeout(autoCloseTimer);
+                autoCloseTimer = null;
+            }
+            
+            const winners = Array.from(currentCounts.entries())
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 3);
+            
+            const overlay = document.querySelector('.podium-overlay');
+            
+            // 重置颁奖台状态
+            podiumClosed = false;
+            
+            // 设置获奖者信息
+            winners.forEach((winner, index) => {
+                const [uid, score] = winner;
+                const step = document.querySelector(`.${['gold', 'silver', 'bronze'][index]}`);
+                const avatar = step.querySelector('.winner-avatar');
+                const name = step.querySelector('.winner-name');
+                const scoreEl = step.querySelector('.winner-score');
+                
+                avatar.src = `/avatar/${uid}.jpg`;
+                name.textContent = uidToLatestUserId.get(uid);
+                scoreEl.textContent = `盖楼 ${Math.floor(score)} 层`;
+            });
+            
+            // 显示颁奖台
+            overlay.style.display = 'flex';
+            
+            // 只在首次显示时播放礼花和设置自动关闭
+            if (!fromTrophy) {
+                setTimeout(() => {
+                    startConfettiShow();
+                }, 500);
+                
+                // 10秒后自动关闭颁奖台
+                autoCloseTimer = setTimeout(() => {
+                    if (!podiumClosed) {
+                        closePodium();
+                    }
+                }, 10000);
+            }
+        }
+
+        // 为奖杯按钮添加点击事件
+        document.querySelector('.award-button').addEventListener('click', function(e) {
+            e.preventDefault();  // 防止事件冒泡
+            console.log("Trophy button clicked");
+            showPodium(true);
+        });
+
+        // 修改关闭按钮事件
+        document.querySelector('.close-podium').addEventListener('click', function(e) {
+            e.preventDefault();  // 防止事件冒泡
+            closePodium();
+        });
+    </script>
+</body>
+</html>
