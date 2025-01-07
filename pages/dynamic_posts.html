@@ -62,11 +62,11 @@
             border-radius: 20px;
             box-shadow: 0 10px 20px rgba(0,0,0,0.05);
             margin-bottom: 30px;
-            height: 550px;
+            height: 650px;
         }
 
         .controls {
-            margin: 30px 0;
+            margin: 130px 0;
             text-align: center;
         }
 
@@ -648,8 +648,8 @@
             // 只在数据发生变化时更新图表
             if (dataChanged) {
                 const sortedUsers = Array.from(currentCounts.entries())
-                    .sort((a, b) => b[1] - a[1])
-                    .slice(0, 10);
+                    .sort((a, b) => b[1] - a[1]) // 按发言数降序排序
+                    .slice(0, 15);  // 取前10名用户
 
                 const labels = sortedUsers.map(([uid]) => uidToLatestUserId.get(uid) || uid);
                 const uids = sortedUsers.map(([uid]) => uid);
