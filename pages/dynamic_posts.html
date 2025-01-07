@@ -575,6 +575,15 @@
                     },
                     plugins: {
                         legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    // 使用 context.dataIndex 获取当前数据的索引
+                                    const rawData = context.chart.data.rawData;  // 我们需要先存储原始数据
+                                    return `累计盖楼数: ${Math.floor(rawData[context.dataIndex])}`;
+                                }
+                            }
+                        },
                         datalabels: {
                             anchor: 'end',
                             align: 'right',
@@ -676,6 +685,7 @@
                 chart.data.labels = labels;
                 chart.data.uids = uids;
                 chart.data.datasets[0].data = data;
+                chart.data.rawData = rawData;  // 存储原始数据供 tooltip 使用
                 
                 // 在数据标签中始终显示原始值
                 chart.options.plugins.datalabels.formatter = (value, context) => {
